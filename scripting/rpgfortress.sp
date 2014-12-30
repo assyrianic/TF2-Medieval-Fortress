@@ -49,7 +49,7 @@ ConVar rs_enable = null;
 ConVar cvar_fireball_recharge = null;
 ConVar cvar_hellfire_recharge = null;
 ConVar cvar_electric_recharge = null;
-ConVar cvar_exp_levelup;
+//ConVar cvar_exp_levelup;
 ConVar cvar_level_max;
 ConVar cvar_exp_default;
 ConVar cvar_exp_onkill;
@@ -68,7 +68,7 @@ ConVar player_speed_medic = null;
 
 //floats--------------------------------------------------------------------------------------------------------
 float flSpell[CLIENTS];
-//float g_flPrayerCharge[MAXPLAYERS+1];
+//float flPrayerCharge[MAXPLAYERS+1];
 
 //ints----------------------------------------------------------------------------------------------------------
 //new PrayerCond[MAXPLAYERS+1];
@@ -136,9 +136,9 @@ public void OnPluginStart()
 	//cvar_level_default = CreateConVar("rpg_level_default", "1", "Default level for players when they join");
 	cvar_level_max = CreateConVar("rpg_level_max", "99", "Maximum level players can reach and use to calculate damage");
 	cvar_exp_default = CreateConVar("rpg_exp_default", "83", "Default max experience for players when they join");
-	cvar_exp_onkill = CreateConVar("rpg_exp_onkill", "216", "Experience to gain on kill");
-	cvar_exp_levelup = CreateConVar("rpg_exp_levelup", "1.105", "Experience increase on level up");
-	cvar_exp_ondmg = CreateConVar("rpg_exp_damage_mult", "1.5", "Experience multiplier for damage");
+	cvar_exp_onkill = CreateConVar("rpg_exp_onkill", "50", "Experience to gain on kill");
+	//cvar_exp_levelup = CreateConVar("rpg_exp_levelup", "1.105", "Experience increase on level up");
+	cvar_exp_ondmg = CreateConVar("rpg_exp_damage_mult", "1.25", "Experience multiplier for damage");
 
 	player_speed_medic = CreateConVar("rpg_playerspeed_medic", "350.0", "speed of Medics in Hammer units");
 	//player_speed_engineer = CreateConVar("rpg_playerspeed_engie", "350.0", "speed of Engineers in Hammer units");
@@ -179,7 +179,7 @@ public void OnClientPutInServer(int client)
 	SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 	SDKHook(client, SDKHook_PreThink, OnPreThink);
 	//PrayerCond[client] = -1;
-	//g_flPrayerCharge[client] = 0.0;
+	//flPrayerCharge[client] = 0.0;
 	iPlayerExp[client] = 0;
 	iPlayerExpMax[client] = cvar_exp_default.IntValue;
 	if (GetPlayerLevel(client) < 1)
@@ -194,7 +194,7 @@ public void OnClientDisconnect(int client)
 	SDKUnhook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 	SDKUnhook(client, SDKHook_PreThink, OnPreThink);
 	//PrayerCond[client] = -1;
-	//g_flPrayerCharge[client] = 0.0;
+	//flPrayerCharge[client] = 0.0;
 	iPlayerLevel[client] = 0;
 	iWepSelection[client] = 0;
 	if (IsValidEntity(client)) TF2Attrib_RemoveAll(client);
@@ -292,7 +292,7 @@ public void UpdateHud(int client)
 		else ShowSyncHudText(client, hudEXP, "Exp: %i/%i", iPlayerExp[client], iPlayerExpMax[client]);
 
 		//SetHudTextParams(0.14, 0.75, 1.0, 100, 200, 255, 150);
-		//new showpray = RoundFloat(g_flPrayerCharge[client]);
+		//new showpray = RoundFloat(flPrayerCharge[client]);
 		//ShowSyncHudText(client, Prayertext, "Prayer Charge: %i", showpray);
 	}
 }
@@ -447,35 +447,32 @@ public int MenuHandler_GiveRangeWep(Menu menu, MenuAction action, int client, in
 	menu.GetItem(param2, info2, sizeof(info2));
         if (action == MenuAction_Select)
         {
-		int weapon;
+		int weapon = -1;
 		TF2_RemoveAllWeapons2(client);
 		switch (param2)
 		{
 			case 0:
 			{
 				weapon = SpawnWeapon(client, "tf_weapon_compound_bow", 56, 100, 5, "6 ; 0.75 ; 2 ; 1.50");
-		                SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", weapon);
 				SetWeaponAmmo(weapon, 100);
 		        }
 		        case 1:
 		        {
 		                weapon = SpawnWeapon(client, "tf_weapon_cleaver", 812, 100, 5, "6 ; 0.8");
-		                SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", weapon);
 		                SetWeaponAmmo(weapon, 100);
 		        }
 			case 2:
 		        {
 				weapon = SpawnWeapon(client, "tf_weapon_crossbow", 305, 100, 5, "2 ; 2.0");
-		                SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", weapon);
 				SetWeaponAmmo(weapon, 100);
 		        }
 		        case 3:
 		        {
 				weapon = SpawnWeapon(client, "tf_weapon_cannon", 996, 100, 5, "466 ; 1 ; 477 ; 1.0 ; 97 ; 0.6 ; 3 ; 0.25 ; 103 ; 3.0 ; 2 ; 1.50");
-		                SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", weapon);
 				SetWeaponAmmo(weapon, 100);
 		        }
 		}
+		SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", weapon);
 		iWepSelection[client] = param2;
                 SpawnWeapon(client, "tf_weapon_builder", 28, 5, 10, "57 ; 5.0 ; 26 ; 75 ; 252 ; 0");
         }
@@ -530,30 +527,29 @@ spell list
 		if (IsValidEntity( FindPlayerBack(client, iRemoveItems, sizeof(iRemoveItems)) ))
 			RemovePlayerBack(client, iRemoveItems, sizeof(iRemoveItems));
 
+		int weapon = -1;
 		switch (param2)
 		{
 			case 0:
 			{
 				SpawnWeapon(client, "tf_weapon_spellbook", 1069, 100, 5, "2 ; 1.0");
 				SetSpell(client, 0, 0); //fireball
-				int weapon=SpawnWeapon(client, "tf_weapon_buff_item", 129, 100, 5, "2 ; 1.0");
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", weapon);
+				weapon=SpawnWeapon(client, "tf_weapon_buff_item", 129, 100, 5, "2 ; 1.0");
 			}
 			case 1:
 			{
 				SpawnWeapon(client, "tf_weapon_spellbook", 1069, 100, 5, "2 ; 1.0");
 				SetSpell(client, 7, 0); //electrical orb
-				int weapon=SpawnWeapon(client, "tf_weapon_buff_item", 129, 100, 5, "2 ; 1.0");
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", weapon);
+				weapon=SpawnWeapon(client, "tf_weapon_buff_item", 129, 100, 5, "2 ; 1.0");
 			}
 			case 2:
 			{
 				SpawnWeapon(client, "tf_weapon_spellbook", 1069, 100, 5, "2 ; 1.0");
 				SetSpell(client, 1, 0); //hellfire missiles
-				int weapon=SpawnWeapon(client, "tf_weapon_buff_item", 226, 100, 5, "2 ; 1.0");
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", weapon);
+				weapon=SpawnWeapon(client, "tf_weapon_buff_item", 226, 100, 5, "2 ; 1.0");
 			}
 		}
+		SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", weapon);
 		iWepSelection[client] = param2;
 		SpawnWeapon(client, "tf_weapon_builder", 28, 5, 10, "57 ; 2.0 ; 26 ; 25 ; 252 ; 0");
 	}
@@ -720,7 +716,7 @@ public Action PlayerSpawn(Event event, const char[] name, bool dontBroadcast)
 			SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", weapon);
 			TF2_AddCondition(client, TFCond_Ubercharged, 3.0);
 			SetEntityHealth(client, GetEntProp(client, Prop_Data, "m_iMaxHealth"));
-			//g_flPrayerCharge[client] = 100.0;
+			//flPrayerCharge[client] = 100.0;
 			//CreateTimer(0.1, PlayerTimer, GetClientUserId(client), TIMER_REPEAT);
 			//CreateTimer(GetConVarFloat(prayer_charge_timer), Timer_PrayerRegen, GetClientUserId(client), TIMER_REPEAT);
 			RS_Menu(client, -1);
@@ -768,7 +764,7 @@ public Action EventPlayerDeath(Event event, const char[] name, bool dontBroadcas
 		int attacker = GetClientOfUserId(event.GetInt("attacker"));
 		if (!client || !attacker) return Plugin_Continue;
 
-		//g_flPrayerCharge[client] = 0.0;
+		//flPrayerCharge[client] = 0.0;
 
 		if (attacker != client && cvar_exp_onkill.IntValue >= 1 && iPlayerLevel[attacker] < cvar_level_max.IntValue)
 		{
@@ -955,8 +951,8 @@ public Action EventInventApp(Event event, const char[] name, bool dontBroadcast)
 
 	if (!TF2_IsPlayerInCondition(client, TFCond_SmallBulletResist) || !TF2_IsPlayerInCondition(client, TFCond_SmallBlastResist) || !TF2_IsPlayerInCondition(client, TFCond_SmallFireResist) || !TF2_IsPlayerInCondition(client, TFCond_DefenseBuffed))
 	{
-		g_flPrayerCharge[client] += GetConVarFloat(PrayerCharge);
-		if (g_flPrayerCharge[client] > 100.0) g_flPrayerCharge[client] = 100.0;
+		flPrayerCharge[client] += GetConVarFloat(PrayerCharge);
+		if (flPrayerCharge[client] > 100.0) flPrayerCharge[client] = 100.0;
 	}
         return Plugin_Continue;
 }
@@ -968,8 +964,8 @@ public ActivatePrayer(userid) //activates prayer
 		if (PrayerCond[client] != -1)
 		{
 			TF2_AddCondition(client, TFCond:PrayerCond[client], 0.3);
-			g_flPrayerCharge[client] -= 0.3;
-			if (g_flPrayerCharge[client] <= 0.0)
+			flPrayerCharge[client] -= 0.3;
+			if (flPrayerCharge[client] <= 0.0)
 			{
 				DeactivatePrayer(userid);
 				CPrintToChat(client, "{red}Prayer Charge Depleted!");
@@ -990,7 +986,7 @@ public DeactivatePrayer(userid) //deactivates prayer obviously
 	if (client && IsClientInGame(client) && PrayerCond[client] != -1)
 	{
 		TF2_RemoveCondition(client, TFCond:PrayerCond[client]);
-		if (g_flPrayerCharge[client] <= 0.0) g_flPrayerCharge[client] = 0.0;
+		if (flPrayerCharge[client] <= 0.0) flPrayerCharge[client] = 0.0;
 	}
 	return;
 }*/
@@ -1292,12 +1288,13 @@ stock void LevelUp(int client, int level)
 	SetHudTextParams(0.22, 0.90, 5.0, 100, 255, 100, 150, 2);
 	ShowSyncHudText(client, hudLevelUp, "LEVEL UP!");
 	SetPlayerLevel(client, level);
-	float total = float(cvar_exp_default.IntValue);
+	//int total = cvar_exp_default.IntValue;
+	int total = 0;
 	for (int i = 1; i < level; i++)
 	{
-		total *= cvar_exp_levelup.FloatValue;
+		total += RoundToFloor(i+75.0 * Pow(2.0, i/7.0));
 	}
-	iPlayerExpMax[client] = RoundFloat(total);
+	iPlayerExpMax[client] = total;
 	if (level >= cvar_level_max.IntValue) iPlayerExpMax[client] = 0;
 }
 stock int GetWeaponAmmo(int armament)
@@ -1357,58 +1354,3 @@ stock int GetMaxAmmo(int client, int slot)
 	}
 	return 0;
 }
-
-/*stock bool:IsRPGFortressMap(bool:forceRecalc = false) //taken and ported from VSH code
-{
-	static bool:found = false;
-	static bool:isRPGMap = false;
-	if (forceRecalc)
-	{
-		isRPGMap = false;
-		found = false;
-	}
-	if (!found)
-	{
-		decl String:s[PLATFORM_MAX_PATH];
-		GetCurrentMap(currentmap, sizeof(currentmap));
-		if (FileExists("bNextMapToHale"))
-		{
-			isRPGMap = true;
-			found = true;
-			return true;
-		}
-		BuildPath(Path_SM, s, PLATFORM_MAX_PATH, "configs/saxton_hale/saxton_hale_maps.cfg");
-		if (!FileExists(s))
-		{
-			LogError("********[VSH] Unable to find %s, disabling plugin.", s);
-			isRPGMap = false;
-			found = true;
-			return false;
-		}
-		Handle fileh = OpenFile(s, "r");
-		if (fileh == null)
-		{
-			LogError("********[VSH] Error reading maps from %s, disabling plugin.", s);
-			isRPGMap = false;
-			found = true;
-			return false;
-		}
-		new pingas = 0;
-		while (!IsEndOfFile(fileh) && ReadFileLine(fileh, s, sizeof(s)) && (pingas < 100))
-		{
-			pingas++;
-			if (pingas == 100) LogError("********[VS Saxton Hale] Breaking infinite loop when trying to check the map.");
-			Format(s, strlen(s)-1, s);
-			if (strncmp(s, "//", 2, false) == 0) continue;
-			if ((StrContains(currentmap, s, false) != -1) || (StrContains(s, "all", false) == 0))
-			{
-				CloseHandle(fileh);
-				isRPGMap = true;
-				found = true;
-				return true;
-			}
-		}
-		CloseHandle(fileh);
-	}
-	return isRPGMap;
-}*/
