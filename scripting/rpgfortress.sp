@@ -31,7 +31,7 @@ I D E A S
 
 */
 
-#define PLUGIN_VERSION			"1.11 BETA"
+#define PLUGIN_VERSION			"1.12 BETA"
 #define CLIENTS				MAXPLAYERS+1
 #pragma newdecls			required
 
@@ -134,16 +134,16 @@ public void OnPluginStart()
         steamtools = LibraryExists("SteamTools");
 #endif
 	//cvar_level_default = CreateConVar("rpg_level_default", "1", "Default level for players when they join");
-	cvar_level_max = CreateConVar("rpg_level_max", "99", "Maximum level players can reach and use to calculate damage");
+	cvar_level_max = CreateConVar("rpg_level_max", "99", "Maximum level players can reach");
 	cvar_exp_default = CreateConVar("rpg_exp_default", "83", "Default max experience for players when they join");
 	cvar_exp_onkill = CreateConVar("rpg_exp_onkill", "50", "Experience to gain on kill");
-	//cvar_exp_levelup = CreateConVar("rpg_exp_levelup", "1.105", "Experience increase on level up");
+	//cvar_exp_levelup = CreateConVar("rpg_exp_levelup", "0.833", "Experience increase on level up");
 	cvar_exp_ondmg = CreateConVar("rpg_exp_damage_mult", "1.25", "Experience multiplier for damage");
 
 	player_speed_medic = CreateConVar("rpg_playerspeed_medic", "350.0", "speed of Medics in Hammer units");
 	//player_speed_engineer = CreateConVar("rpg_playerspeed_engie", "350.0", "speed of Engineers in Hammer units");
 	player_speed_sniper = CreateConVar("rpg_playerspeed_sniper", "350.0", "speed of Snipers in Hammer units");
-	player_speed_soldier = CreateConVar("rpg_playerspeed_soldier", "350.0", "speed of Soldiers in Hammer units");
+	player_speed_soldier = CreateConVar("rpg_playerspeed_soldier", "400.0", "speed of Soldiers in Hammer units");
 	
 	LvlCookie = RegClientCookie("rpgfortress_levels", "RPG Fortress Player Levels cookie", CookieAccess_Protected);
 
