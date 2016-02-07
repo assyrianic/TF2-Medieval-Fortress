@@ -99,12 +99,12 @@ int iRemoveItems[] = {
 	30015, //more canteens
 	30535
 };
-
+/*
 methodmap CRPG
 {
 	public CRPG(int index)
 };
-
+*/
 #if defined _steamtools_included
 bool steamtools = false;
 #endif
