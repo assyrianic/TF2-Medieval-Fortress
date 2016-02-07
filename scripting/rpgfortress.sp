@@ -70,11 +70,14 @@ ConVar player_speed_medic = null;
 float flSpell[CLIENTS];
 //float flPrayerCharge[MAXPLAYERS+1];
 
+enum RPGCrap {
+	iPlayerLevel = 0,
+	iPlayerExp,
+	iPlayerExpMax,
+};
 //ints----------------------------------------------------------------------------------------------------------
 //new PrayerCond[MAXPLAYERS+1];
-int iPlayerLevel[CLIENTS];
-int iPlayerExp[CLIENTS];
-int iPlayerExpMax[CLIENTS];
+int iPlayerInfo[CLIENTS][RPGCrap];
 int iWepSelection[CLIENTS];
 int iRemoveItems[] = {
 	241, //various action items
@@ -90,12 +93,16 @@ int iRemoveItems[] = {
 	365,
 	489, //mvm canteen
 	493,
-	1069, //spellbooks
 	1070,
 	1132,
 	5604,
 	30015, //more canteens
 	30535
+};
+
+methodmap CRPG
+{
+	public CRPG(int index)
 };
 
 #if defined _steamtools_included
@@ -110,7 +117,7 @@ public Plugin myinfo = {
         version = PLUGIN_VERSION,
         url = "http://steamcommunity.com/groups/acvsh | http://forums.alliedmods.net/showthread.php?t=230178"
 };
- 
+
 public void OnPluginStart()
 {
         CreateConVar("rpg_version", PLUGIN_VERSION, "RPG Fortress Version", FCVAR_NOTIFY|FCVAR_PLUGIN|FCVAR_SPONLY|FCVAR_DONTRECORD);
@@ -180,8 +187,8 @@ public void OnClientPutInServer(int client)
 	SDKHook(client, SDKHook_PreThink, OnPreThink);
 	//PrayerCond[client] = -1;
 	//flPrayerCharge[client] = 0.0;
-	iPlayerExp[client] = 0;
-	iPlayerExpMax[client] = cvar_exp_default.IntValue;
+	iPlayerInfo[client][iPlayerExp] = 0;
+	iPlayerInfo[client][iPlayerExpMax] = cvar_exp_default.IntValue;
 	if (GetPlayerLevel(client) < 1)
 	{
 		SetPlayerLevel(client, 1);
@@ -195,7 +202,7 @@ public void OnClientDisconnect(int client)
 	SDKUnhook(client, SDKHook_PreThink, OnPreThink);
 	//PrayerCond[client] = -1;
 	//flPrayerCharge[client] = 0.0;
-	iPlayerLevel[client] = 0;
+	iPlayerInfo[client][iPlayerLevel] = 0;
 	iWepSelection[client] = 0;
 	if (IsValidEntity(client)) TF2Attrib_RemoveAll(client);
 }
@@ -279,17 +286,15 @@ public void UpdateHud(int client)
 {
 	if (IsValidClient(client) && IsPlayerAlive(client))
 	{
-		if (iPlayerExp[client] >= iPlayerExpMax[client] && iPlayerLevel[client] < cvar_level_max.IntValue)
-			LevelUp(client, iPlayerLevel[client]+1);
+		if (iPlayerInfo[client][iPlayerExp] >= iPlayerInfo[client][iPlayerExpMax] && iPlayerInfo[client][iPlayerLevel] < cvar_level_max.IntValue)
+			LevelUp(client, iPlayerInfo[client][iPlayerLevel]+1);
 
 		SetHudTextParams(0.14, 0.80, 1.0, 100, 200, 255, 150);
-		ShowSyncHudText(client, hudLevel, "Level: %i", iPlayerLevel[client]);
+		ShowSyncHudText(client, hudLevel, "Level: %i", iPlayerInfo[client][iPlayerLevel]);
 		SetHudTextParams(0.14, 0.83, 1.0, 255, 200, 100, 150);
 
-		if (iPlayerLevel[client] >= cvar_level_max.IntValue)
-			ShowSyncHudText(client, hudEXP, "Max Level Reached");
-
-		else ShowSyncHudText(client, hudEXP, "Exp: %i/%i", iPlayerExp[client], iPlayerExpMax[client]);
+		if (iPlayerInfo[client][iPlayerLevel] >= cvar_level_max.IntValue) ShowSyncHudText(client, hudEXP, "Max Level Reached");
+		else ShowSyncHudText(client, hudEXP, "Exp: %i/%i", iPlayerInfo[client][iPlayerExp], iPlayerInfo[client][iPlayerExpMax]);
 
 		//SetHudTextParams(0.14, 0.75, 1.0, 100, 200, 255, 150);
 		//new showpray = RoundFloat(flPrayerCharge[client]);
@@ -305,8 +310,8 @@ public Action CommandSetLevels(int client, int args)
 			ReplyToCommand(client, "[VSH Engine] Usage: rpg_setlvl <target> <lvl>");
 			return Plugin_Handled;
 		}
-		char s2[80];
-		char targetname[PLATFORM_MAX_PATH];
+		char s2[16];
+		char targetname[32];
 		GetCmdArg(1, targetname, sizeof(targetname));
 		GetCmdArg(2, s2, sizeof(s2));
 		int points = StringToInt(s2);
@@ -766,9 +771,9 @@ public Action EventPlayerDeath(Event event, const char[] name, bool dontBroadcas
 
 		//flPrayerCharge[client] = 0.0;
 
-		if (attacker != client && cvar_exp_onkill.IntValue >= 1 && iPlayerLevel[attacker] < cvar_level_max.IntValue)
+		if (attacker != client && cvar_exp_onkill.IntValue >= 1 && iPlayerInfo[attacker][iPlayerLevel] < cvar_level_max.IntValue)
 		{
-			iPlayerExp[attacker] += cvar_exp_onkill.IntValue;
+			iPlayerInfo[attacker][iPlayerExp] += cvar_exp_onkill.IntValue;
 			SetHudTextParams(0.28, 0.93, 1.0, 255, 100, 100, 150, 1);
 			ShowSyncHudText(attacker, hudPlus2, "+%i", cvar_exp_onkill.IntValue);
 		}
@@ -782,14 +787,14 @@ public Action EventPlayerHurt(Event event, const char[] name, bool dontBroadcast
                 int client = GetClientOfUserId( event.GetInt("userid") );
                 int attacker = GetClientOfUserId(event.GetInt("attacker"));
 		int rawDamage = event.GetInt("damageamount");
-                if (!client || !attacker || client == attacker) return Plugin_Continue;
+                if ( !client || !attacker || client == attacker ) return Plugin_Continue;
 
 		float percent = cvar_exp_ondmg.FloatValue;
 		float dmg = rawDamage*percent;
 		
-		if ( !(dmg <= 0.0) && attacker != client && iPlayerLevel[attacker] < cvar_level_max.IntValue )
+		if ( !(dmg <= 0.0) && attacker != client && iPlayerInfo[attacker][iPlayerLevel] < cvar_level_max.IntValue )
 		{
-			iPlayerExp[attacker] += RoundFloat(dmg);
+			iPlayerInfo[attacker][iPlayerExp] += RoundFloat(dmg);
 			SetHudTextParams(0.24, 0.93, 1.0, 255, 100, 100, 150, 1);
 			ShowSyncHudText(attacker, hudPlus1, "+%i", RoundFloat(dmg));
 		}
@@ -1085,7 +1090,7 @@ stock int SpawnWeapon(int client, char[] name, int index, int level, int qual, c
 	else TF2Items_SetNumAttributes(hWeapon, 0);
 	if (hWeapon == null) return -1;
 	int entity = TF2Items_GiveNamedItem(client, hWeapon);
-	hWeapon.Close();
+	delete hWeapon;
 	EquipPlayerWeapon(client, entity);
 	return entity;
 }
@@ -1138,7 +1143,7 @@ stock void SetSpellCharges(int book, int amount)
 stock void SetSpell(int client, int spell, int charge)
 {
 	int spellbook = FindSpellbook(client);
-	if (spellbook == -1) LogError("[RPG Fortress] ErMac: Spellbook Assignment Failure!");
+	if (spellbook <= 0) LogError("[RPG Fortress] ErMac: Spellbook Assignment Failure!");
 	else
         {
 		SetSpellCharges(spellbook, charge);
@@ -1284,7 +1289,7 @@ stock void ClearTimer(Handle &Timer)
 }
 stock void LevelUp(int client, int level)
 {
-	iPlayerLevel[client] = level;
+	iPlayerInfo[client][iPlayerLevel] = level;
 	SetHudTextParams(0.22, 0.90, 5.0, 100, 255, 100, 150, 2);
 	ShowSyncHudText(client, hudLevelUp, "LEVEL UP!");
 	SetPlayerLevel(client, level);
@@ -1294,8 +1299,8 @@ stock void LevelUp(int client, int level)
 	{
 		total += RoundToFloor(i+75.0 * Pow(2.0, i/7.0));
 	}
-	iPlayerExpMax[client] = total;
-	if (level >= cvar_level_max.IntValue) iPlayerExpMax[client] = 0;
+	iPlayerInfo[client][iPlayerExpMax] = total;
+	if (level >= cvar_level_max.IntValue) iPlayerInfo[client][iPlayerExpMax] = 0;
 }
 stock int GetWeaponAmmo(int armament)
 {
